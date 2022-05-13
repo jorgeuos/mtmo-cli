@@ -1,0 +1,81 @@
+#!/bin/bash
+# MIT License
+# Copyright (c) 2022 Jorge Powers
+
+
+# Load NVM
+export NVM_DIR="$HOME/.nvm"
+# shellcheck source=/dev/null
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# vue(){
+MTMO_OPTION="$1"
+MTMO_ARGS_2="$2"
+MTMO_ARGS_3="$3"
+NVM_RUNNING_VERSION=$(nvm version)
+RECOMMENDED_NODE_VERSION=$(
+  while IFS= read -r line
+    do echo "$line"
+  done < ./plugins/CoreVue/Commands/Build.php | \
+  grep -a 'RECOMMENDED_NODE_VERSION.*=' | \
+  grep -o "'.*'" | \
+  sed "s/'//g" | \
+  sed "s/^/v/g"
+  )
+NVMRC=.nvmrc
+
+(
+  if [[ "$MTMO_ARGS_2" == "" ]]; then
+      echo "What do you wanna do? vue build | vue watch"
+      exit 1
+  fi
+
+  if [[ "$MTMO_OPTION" == "vue" ]]; then
+    # Set our environment
+    # Because of subshell, we need to set nvm version everytime
+    if [[ $NVM_RUNNING_VERSION != "$RECOMMENDED_NODE_VERSION" ]]; then
+      echo "Use correct nvm version."
+      if [[ -n $NVMRC ]]; then
+        echo "No .nvmrc, creating."
+        echo "$RECOMMENDED_NODE_VERSION" > $NVMRC
+      fi
+      echo "Trying \`nvm use\`";
+      if ! nvm use; then
+        echo "Couldn't set the right nvm version."
+        exit 1
+      else
+        echo "Nvm set."
+      fi
+    fi
+    if [[ "$MTMO_ARGS_2" == "" ]]; then
+        echo "Argument missing. (build|watch)"
+        exit 1
+    fi
+    if [[ "$MTMO_ARGS_3" == "" ]]; then
+        echo "Plugin name missing."
+        exit 1;
+    fi
+    if [[ "$MTMO_ARGS_2" == "build" ]]; then
+        echo "Mtmo build: "
+        FORCE_COLOR=1 MATOMO_CURRENT_PLUGIN="$MTMO_ARGS_3" \
+        ./node_modules/@vue/cli-service/bin/vue-cli-service.js build \
+        --target lib --name "$MTMO_ARGS_3" \
+        ./plugins/"$MTMO_ARGS_3"/vue/src/index.ts \
+        --dest ./plugins/"$MTMO_ARGS_3"/vue/dist
+        exit 0
+    fi
+    if [[ "$MTMO_ARGS_2" == "watch" ]]; then
+        echo "Mtmo watch: $MTMO_ARGS_3"
+        FORCE_COLOR=1 MATOMO_CURRENT_PLUGIN="$MTMO_ARGS_3" \
+        ./node_modules/@vue/cli-service/bin/vue-cli-service.js build \
+        --watch --target lib --name "$MTMO_ARGS_3" \
+        ./plugins/"$MTMO_ARGS_3"/vue/src/index.ts \
+        --dest ./plugins/"$MTMO_ARGS_3"/vue/dist
+        exit 0
+    fi
+  fi
+)
+# }
+
+# vue "$@"
+
